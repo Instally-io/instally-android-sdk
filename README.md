@@ -1,18 +1,22 @@
 # Instally Android SDK
 
-Track clicks, installs, and revenue from every link you share. See which links actually drive installs and revenue for your Android app. Deterministic attribution via Google Install Referrer with fingerprint fallback.
+Track clicks, installs, and revenue from every link you share. See which links actually drive installs and revenue for your Android app. No GAID required, no special permissions.
+
+![Platform](https://img.shields.io/badge/platform-Android%205.0%2B-black)
+![Kotlin](https://img.shields.io/badge/kotlin-1.8%2B-purple)
+![License](https://img.shields.io/badge/license-MIT-black)
 
 **[Website](https://instally.io)** | **[Documentation](https://docs.instally.io)** | **[Blog](https://instally.io/blog)** | **[Sign Up Free](https://app.instally.io/signup)**
 
 ## Features
 
 - 3-line integration — configure, track, done
-- Deterministic attribution via Google Play Install Referrer
+- High-accuracy attribution for Google Play installs
 - No GAID/AAID required, no special permissions
 - Per-link install and revenue tracking
 - Real-time dashboard
 - Webhook integrations with RevenueCat, Superwall, Adapty, Qonversion, and Stripe
-- Single dependency (Install Referrer)
+- Minimal dependency footprint
 
 ## Installation
 
@@ -32,7 +36,7 @@ dependencyResolutionManagement {
 
 ```kotlin
 dependencies {
-    implementation("com.github.instally:instally-android-sdk:1.0.0")
+    implementation("com.github.Instally-io:instally-android-sdk:1.0.1")
 }
 ```
 
@@ -73,18 +77,57 @@ val attributed = Instally.isAttributed(context)
 val id = Instally.attributionId(context)
 ```
 
-## How It Works
+## Testing Attribution
 
-1. On first launch, the SDK reads the Google Play Install Referrer (deterministic) and collects device signals
-2. Signals are sent to the Instally attribution API
-3. The API matches the install to a tracking link click
-4. The result is cached locally — `trackInstall()` only fires once per install
-5. Purchases are linked to the attribution via `trackPurchase()` or webhooks
+Development builds are supported. For the cleanest test, click the tracking link
+once on the same physical device you open the app on, then launch the app within
+a few minutes.
+
+Avoid repeated clicks before opening the app. Multiple recent unmatched clicks
+from the same device or network can be treated as ambiguous and return
+`matched=false`.
+
+`trackInstall()` is cached per app install, including `matched=false` results.
+When retrying on the same dev build, uninstall/reinstall the app or clear the SDK
+cache in development:
+
+```kotlin
+if (BuildConfig.DEBUG) {
+    Instally.resetForTesting(context)
+}
+```
+
+## FAQ
+
+### Do I need any special permissions?
+
+No manifest permissions beyond `INTERNET` (added automatically by the SDK manifest).
+
+### Does it work with RevenueCat or Stripe?
+
+Yes. Call `Instally.setUserId(...)` with your subscription-platform user ID, then configure the Instally webhook in your RevenueCat/Stripe dashboard. Purchases are automatically attributed to the link that drove the install. See the [RevenueCat integration guide](https://instally.io/blog/revenuecat-instally-integration) or [Stripe integration guide](https://instally.io/blog/stripe-instally-integration).
+
+### What happens with preinstalled apps?
+
+If the app was preinstalled (no prior click), `trackInstall()` reports the install as organic.
+
+### What's the SDK size?
+
+Under 50 KB.
+
+### Where can I see my data?
+
+Real-time dashboard at [app.instally.io](https://app.instally.io) — clicks, installs, revenue, per-link breakdown.
 
 ## Requirements
 
 - Android API 21+ (Android 5.0)
 - Internet permission (added automatically by the SDK manifest)
+
+## Learn More
+
+- [How to Track App Installs in Android (Kotlin)](https://instally.io/blog/how-to-track-app-installs-android) — full integration walkthrough
+- [Instally vs AppsFlyer vs Branch](https://instally.io/blog/instally-vs-appsflyer-vs-branch) — competitor comparison
 
 ## Resources
 

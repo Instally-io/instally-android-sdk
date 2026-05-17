@@ -94,10 +94,6 @@ class InstallyTest {
         latch.await(5, TimeUnit.SECONDS)
     }
 
-    // -------------------------------------------------------
-    // 1. configure() sets credentials
-    // -------------------------------------------------------
-
     @Test
     fun `configure sets appId apiKey and isConfigured`() {
         Instally.configure(context, appId = "my_app", apiKey = "my_key")
@@ -105,10 +101,6 @@ class InstallyTest {
         assertEquals("my_key", getPrivateField("apiKey"))
         assertEquals(true, getPrivateField("isConfigured"))
     }
-
-    // -------------------------------------------------------
-    // 2. trackInstall() without configure() logs error and returns
-    // -------------------------------------------------------
 
     @Test
     fun `trackInstall without configure returns immediately`() {
@@ -119,10 +111,6 @@ class InstallyTest {
         Thread.sleep(200)
         assertFalse("Callback should not be invoked when not configured", callbackInvoked)
     }
-
-    // -------------------------------------------------------
-    // 3. trackPurchase() without configure() logs error and returns
-    // -------------------------------------------------------
 
     @Test
     fun `trackPurchase without configure returns immediately`() {
@@ -138,20 +126,12 @@ class InstallyTest {
         assertEquals(0, server.requestCount)
     }
 
-    // -------------------------------------------------------
-    // 4. setUserId() without configure() logs error and returns
-    // -------------------------------------------------------
-
     @Test
     fun `setUserId without configure returns immediately`() {
         Instally.setUserId(context, "user_123")
         // Should not throw, and no network call
         assertEquals(0, server.requestCount)
     }
-
-    // -------------------------------------------------------
-    // 5. trackInstall() sends correct payload
-    // -------------------------------------------------------
 
     @Test
     fun `trackInstall sends correct payload fields`() {
@@ -177,16 +157,12 @@ class InstallyTest {
         assertEquals("android", body.getString("platform"))
         assertTrue(body.has("device_model"))
         assertTrue(body.has("os_version"))
-        assertEquals("1.0.0", body.getString("sdk_version"))
+        assertEquals("1.0.1", body.getString("sdk_version"))
         assertTrue(body.has("screen_width"))
         assertTrue(body.has("screen_height"))
         assertTrue(body.has("timezone"))
         assertTrue(body.has("language"))
     }
-
-    // -------------------------------------------------------
-    // 6. trackInstall() returns cached on second call
-    // -------------------------------------------------------
 
     @Test
     fun `trackInstall returns cached result on second call`() {
@@ -221,10 +197,6 @@ class InstallyTest {
         assertEquals(1, server.requestCount)
     }
 
-    // -------------------------------------------------------
-    // 7. trackInstall() network failure doesn't mark as tracked
-    // -------------------------------------------------------
-
     @Test
     fun `trackInstall network failure does not mark as tracked`() {
         configureWithMockServer()
@@ -248,10 +220,6 @@ class InstallyTest {
         assertFalse(prefs.getBoolean("install_tracked", false))
     }
 
-    // -------------------------------------------------------
-    // 8. trackPurchase() without attribution ID returns early
-    // -------------------------------------------------------
-
     @Test
     fun `trackPurchase without attribution ID returns early`() {
         configureWithMockServer()
@@ -265,10 +233,6 @@ class InstallyTest {
         Thread.sleep(500)
         assertEquals(0, server.requestCount)
     }
-
-    // -------------------------------------------------------
-    // 9. trackPurchase() sends correct payload
-    // -------------------------------------------------------
 
     @Test
     fun `trackPurchase sends correct payload`() {
@@ -304,13 +268,9 @@ class InstallyTest {
         assertEquals(9.99, body.getDouble("revenue"), 0.001)
         assertEquals("EUR", body.getString("currency"))
         assertEquals("txn_456", body.getString("transaction_id"))
-        assertEquals("1.0.0", body.getString("sdk_version"))
+        assertEquals("1.0.1", body.getString("sdk_version"))
         assertTrue(body.has("timestamp"))
     }
-
-    // -------------------------------------------------------
-    // 10. setUserId() queues when attribution in flight
-    // -------------------------------------------------------
 
     @Test
     fun `setUserId queues when attribution in flight`() {
@@ -326,10 +286,6 @@ class InstallyTest {
         // No request should have been made yet
         assertEquals(0, server.requestCount)
     }
-
-    // -------------------------------------------------------
-    // 11. setUserId() sends correct payload
-    // -------------------------------------------------------
 
     @Test
     fun `setUserId sends correct payload`() {
@@ -353,12 +309,8 @@ class InstallyTest {
         assertEquals("test_app", body.getString("app_id"))
         assertEquals("attr_abc", body.getString("attribution_id"))
         assertEquals("rc_user_789", body.getString("user_id"))
-        assertEquals("1.0.0", body.getString("sdk_version"))
+        assertEquals("1.0.1", body.getString("sdk_version"))
     }
-
-    // -------------------------------------------------------
-    // 12. All requests include X-API-Key and X-App-ID headers
-    // -------------------------------------------------------
 
     @Test
     fun `requests include X-API-Key and X-App-ID headers`() {
@@ -401,44 +353,34 @@ class InstallyTest {
         assertEquals("test_app", request.getHeader("X-App-ID"))
     }
 
-    // -------------------------------------------------------
-    // 13. Install Referrer params are parsed correctly
-    // -------------------------------------------------------
-
     @Test
-    fun `parseReferrerParam extracts instally_click_id from referrer string`() {
+    fun `parseReferrerParam extracts in_click_id from referrer string`() {
         val method = Instally.javaClass.getDeclaredMethod(
             "parseReferrerParam", String::class.java, String::class.java
         )
         method.isAccessible = true
 
-        // Standard referrer with instally_click_id
-        val result1 = method.invoke(Instally, "utm_source=google&instally_click_id=abc123&utm_medium=cpc", "instally_click_id")
+        val result1 = method.invoke(Instally, "utm_source=google&in_click_id=abc123&utm_medium=cpc", "in_click_id")
         assertEquals("abc123", result1)
 
-        // instally_click_id at the start
-        val result2 = method.invoke(Instally, "instally_click_id=xyz789&utm_source=google", "instally_click_id")
+        val result2 = method.invoke(Instally, "in_click_id=xyz789&utm_source=google", "in_click_id")
         assertEquals("xyz789", result2)
 
-        // instally_click_id at the end
-        val result3 = method.invoke(Instally, "utm_source=google&instally_click_id=end123", "instally_click_id")
+        val result3 = method.invoke(Instally, "utm_source=google&in_click_id=end123", "in_click_id")
         assertEquals("end123", result3)
 
-        // No instally_click_id present
-        val result4 = method.invoke(Instally, "utm_source=google&utm_medium=cpc", "instally_click_id")
+        val result4 = method.invoke(Instally, "utm_source=google&utm_medium=cpc", "in_click_id")
         assertNull(result4)
 
-        // Empty referrer string
-        val result5 = method.invoke(Instally, "", "instally_click_id")
+        val result5 = method.invoke(Instally, "", "in_click_id")
         assertNull(result5)
 
-        // instally_click_id with empty value
-        val result6 = method.invoke(Instally, "instally_click_id=&utm_source=google", "instally_click_id")
+        val result6 = method.invoke(Instally, "in_click_id=&utm_source=google", "in_click_id")
         assertEquals("", result6)
     }
 
     @Test
-    fun `buildPayload includes instally_click_id from referrer`() {
+    fun `buildPayload includes in_click_id from referrer`() {
         configureWithMockServer()
 
         val method = Instally.javaClass.getDeclaredMethod(
@@ -446,13 +388,13 @@ class InstallyTest {
         )
         method.isAccessible = true
 
-        val payload = method.invoke(Instally, context, "utm_source=test&instally_click_id=click_abc") as JSONObject
-        assertEquals("click_abc", payload.getString("instally_click_id"))
-        assertEquals("utm_source=test&instally_click_id=click_abc", payload.getString("install_referrer"))
+        val payload = method.invoke(Instally, context, "utm_source=test&in_click_id=click_abc") as JSONObject
+        assertEquals("click_abc", payload.getString("in_click_id"))
+        assertEquals("utm_source=test&in_click_id=click_abc", payload.getString("install_referrer"))
     }
 
     @Test
-    fun `buildPayload without referrer omits instally_click_id and install_referrer`() {
+    fun `buildPayload without referrer omits in_click_id and install_referrer`() {
         configureWithMockServer()
 
         val method = Instally.javaClass.getDeclaredMethod(
@@ -461,13 +403,47 @@ class InstallyTest {
         method.isAccessible = true
 
         val payload = method.invoke(Instally, context, null as String?) as JSONObject
-        assertFalse(payload.has("instally_click_id"))
+        assertFalse(payload.has("in_click_id"))
         assertFalse(payload.has("install_referrer"))
     }
 
-    // -------------------------------------------------------
-    // Additional edge cases
-    // -------------------------------------------------------
+    @Test
+    fun `buildPayload accepts legacy instally_click_id referrer`() {
+        configureWithMockServer()
+
+        val method = Instally.javaClass.getDeclaredMethod(
+            "buildPayload", Context::class.java, String::class.java
+        )
+        method.isAccessible = true
+
+        val payload = method.invoke(Instally, context, "utm_source=test&instally_click_id=click_legacy") as JSONObject
+        assertEquals("click_legacy", payload.getString("in_click_id"))
+    }
+
+    @Test
+    fun `resetForTesting clears cached attribution state`() {
+        context.getSharedPreferences("instally_prefs", Context.MODE_PRIVATE)
+            .edit()
+            .putBoolean("install_tracked", true)
+            .putBoolean("matched", true)
+            .putString("attribution_id", "attr_reset")
+            .commit()
+        setPrivateField("pendingUserId", "user_reset")
+        setPrivateField("pendingUserIdContext", context)
+        setPrivateField("attributionInFlight", true)
+
+        Instally.resetForTesting(context)
+
+        val prefs = context.getSharedPreferences("instally_prefs", Context.MODE_PRIVATE)
+        assertFalse(prefs.getBoolean("install_tracked", false))
+        assertFalse(prefs.getBoolean("matched", false))
+        assertNull(prefs.getString("attribution_id", null))
+        assertNull(getPrivateField("pendingUserId"))
+        assertNull(getPrivateField("pendingUserIdContext"))
+        assertEquals(false, getPrivateField("attributionInFlight"))
+        assertNull(Instally.attributionId)
+        assertFalse(Instally.isAttributed)
+    }
 
     @Test
     fun `trackInstall updates in-memory attributionId and isAttributed`() {
@@ -533,8 +509,6 @@ class InstallyTest {
         setPrivateField("attributionInFlight", false)
 
         // Now trackInstall — the SDK sets attributionInFlight=true, then when done calls flushPendingUserId
-        // But we already have a pending user from above. Let's just directly call trackInstall.
-        // Reset the pending state properly
         resetInstally()
         configureWithMockServer()
 

@@ -56,7 +56,7 @@ afterEvaluate {
                 from(components["release"])
                 groupId = "com.github.instally"
                 artifactId = "instally-android-sdk"
-                version = "1.0.0"
+                version = "1.0.1"
             }
         }
     }

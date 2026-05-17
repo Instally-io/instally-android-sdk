@@ -1,7 +1,3 @@
-// Instally Android SDK
-// Track clicks, installs, and revenue from every link.
-// https://instally.io
-
 package io.instally.sdk
 
 import android.content.Context
@@ -32,7 +28,7 @@ import java.util.concurrent.Executors
 object Instally {
 
     private const val TAG = "Instally"
-    private const val SDK_VERSION = "1.0.0"
+    private const val SDK_VERSION = "1.0.1"
     private const val PREFS_NAME = "instally_prefs"
     private const val KEY_TRACKED = "install_tracked"
     private const val KEY_ATTRIBUTION_ID = "attribution_id"
@@ -48,8 +44,6 @@ object Instally {
     private var attributionInFlight = false
 
     private val executor = Executors.newSingleThreadExecutor()
-
-    // MARK: - Configuration
 
     /**
      * Configure Instally with your app credentials.
@@ -74,11 +68,9 @@ object Instally {
         this.apiBase = url
     }
 
-    // MARK: - Install Attribution
-
     /**
      * Track app install attribution. Call once on first app launch, after configure().
-     * Automatically reads the Google Play Install Referrer for deterministic matching.
+     * Automatically reads the Google Play Install Referrer when available.
      * Safe to call on every launch — only runs once per install.
      *
      * ```kotlin
@@ -112,14 +104,12 @@ object Instally {
 
         attributionInFlight = true
 
-        // Try to read the Install Referrer (deterministic attribution), then send
+        // Try to read the Install Referrer, then send the install payload.
         readInstallReferrer(context) { referrer ->
             val payload = buildPayload(context, referrer)
             sendAttribution(context, payload, completion)
         }
     }
-
-    // MARK: - Purchase Tracking
 
     /**
      * Track an in-app purchase attributed to the install.
@@ -180,8 +170,6 @@ object Instally {
             }
         }
     }
-
-    // MARK: - User ID
 
     /**
      * Link an external user ID (e.g. RevenueCat appUserID) to this install's attribution.
@@ -247,8 +235,6 @@ object Instally {
         sendUserId(context, userId, attrId)
     }
 
-    // MARK: - Public Properties
-
     /**
      * Check if this install was attributed to a tracking link.
      */
@@ -284,7 +270,24 @@ object Instally {
             .getString(KEY_ATTRIBUTION_ID, null)
     }
 
-    // MARK: - Private
+    /**
+     * Clear cached install attribution state for development testing.
+     */
+    @JvmStatic
+    fun resetForTesting(context: Context) {
+        context.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .edit()
+            .remove(KEY_TRACKED)
+            .remove(KEY_ATTRIBUTION_ID)
+            .remove(KEY_MATCHED)
+            .apply()
+
+        pendingUserId = null
+        pendingUserIdContext = null
+        attributionInFlight = false
+        attributionId = null
+        isAttributed = false
+    }
 
     private fun readInstallReferrer(context: Context, callback: (String?) -> Unit) {
         try {
@@ -334,13 +337,12 @@ object Instally {
             put("language", Locale.getDefault().toLanguageTag())
             put("sdk_version", SDK_VERSION)
 
-            // Install Referrer (deterministic — the key signal for Android)
             if (referrer != null) {
                 put("install_referrer", referrer)
-                // Extract our click ID if present
-                val clickId = parseReferrerParam(referrer, "instally_click_id")
+                val clickId = parseReferrerParam(referrer, "in_click_id")
+                    ?: parseReferrerParam(referrer, "instally_click_id")
                 if (clickId != null) {
-                    put("instally_click_id", clickId)
+                    put("in_click_id", clickId)
                 }
             }
         }
@@ -369,7 +371,6 @@ object Instally {
                     clickId = json.optString("click_id", null)
                 )
 
-                // Cache result in SharedPreferences
                 val prefs = context.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
                 prefs.edit()
                     .putBoolean(KEY_TRACKED, true)
@@ -377,7 +378,6 @@ object Instally {
                     .putString(KEY_ATTRIBUTION_ID, result.attributionId)
                     .apply()
 
-                // Update in-memory properties
                 this.isAttributed = result.matched
                 this.attributionId = result.attributionId
 
@@ -388,7 +388,6 @@ object Instally {
             } else {
                 Log.e(TAG, "Attribution request failed")
                 attributionInFlight = false
-                // Don't mark as tracked so it retries next launch
                 callback?.invoke(
                     AttributionResult(false, null, 0.0, "error", null)
                 )
