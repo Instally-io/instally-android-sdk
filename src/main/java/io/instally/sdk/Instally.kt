@@ -290,6 +290,14 @@ object Instally {
     }
 
     private fun readInstallReferrer(context: Context, callback: (String?) -> Unit) {
+        // The listener can fire more than once (e.g. a disconnect followed by a
+        // late setup-finished). Deliver exactly one result so we never send
+        // duplicate attribution requests.
+        val delivered = java.util.concurrent.atomic.AtomicBoolean(false)
+        val deliver: (String?) -> Unit = { referrer ->
+            if (delivered.compareAndSet(false, true)) callback(referrer)
+        }
+
         try {
             val client = InstallReferrerClient.newBuilder(context.applicationContext).build()
             client.startConnection(object : InstallReferrerStateListener {
@@ -299,27 +307,27 @@ object Instally {
                             val referrer = client.installReferrer.installReferrer
                             Log.d(TAG, "Install referrer: $referrer")
                             client.endConnection()
-                            callback(referrer)
+                            deliver(referrer)
                         } catch (e: Exception) {
                             Log.w(TAG, "Failed to read referrer: ${e.message}")
                             client.endConnection()
-                            callback(null)
+                            deliver(null)
                         }
                     } else {
                         Log.w(TAG, "Install referrer not available: $responseCode")
                         client.endConnection()
-                        callback(null)
+                        deliver(null)
                     }
                 }
 
                 override fun onInstallReferrerServiceDisconnected() {
                     Log.w(TAG, "Install referrer service disconnected")
-                    callback(null)
+                    deliver(null)
                 }
             })
         } catch (e: Exception) {
             Log.w(TAG, "Install referrer client error: ${e.message}")
-            callback(null)
+            deliver(null)
         }
     }
 
@@ -348,6 +356,11 @@ object Instally {
         }
     }
 
+    private fun optNullableString(json: JSONObject, key: String): String? {
+        if (json.isNull(key)) return null
+        return json.optString(key).ifEmpty { null }
+    }
+
     private fun parseReferrerParam(referrer: String, key: String): String? {
         return referrer.split("&")
             .map { it.split("=", limit = 2) }
@@ -363,12 +376,14 @@ object Instally {
         executor.execute {
             val json = post("/v1/attribution", payload)
             if (json != null) {
+                // Android's org.json coerces JSON null to the string "null" in
+                // optString, so unmatched installs would persist a bogus id.
                 val result = AttributionResult(
                     matched = json.optBoolean("matched", false),
-                    attributionId = json.optString("attribution_id", null),
+                    attributionId = optNullableString(json, "attribution_id"),
                     confidence = json.optDouble("confidence", 0.0),
                     method = json.optString("method", "unknown"),
-                    clickId = json.optString("click_id", null)
+                    clickId = optNullableString(json, "click_id")
                 )
 
                 val prefs = context.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
